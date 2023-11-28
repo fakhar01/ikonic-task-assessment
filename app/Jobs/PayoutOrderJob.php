@@ -16,14 +16,19 @@ class PayoutOrderJob implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
+   protected $apiService;
+   protected $order;
+
     /**
      * Create a new job instance.
      *
      * @return void
      */
-    public function __construct(
-        public Order $order
-    ) {}
+    public function __construct(ApiService $apiService, Order $order)
+    {
+        $this->apiService = $apiService;
+        $this->order = $order;
+    }
 
     /**
      * Use the API service to send a payout of the correct amount.
@@ -31,8 +36,18 @@ class PayoutOrderJob implements ShouldQueue
      *
      * @return void
      */
-    public function handle(ApiService $apiService)
-    {
-        // TODO: Complete this method
-    }
+  public function handle()
+  {
+      $order = $this->order;
+
+      try {
+          $payoutResult = $this->apiService->sendPayout($order->amount); 
+          DB::transaction(function () use ($order) {
+              $order->update(['status' => 'paid']);
+          });
+      } catch (\Exception $e) {
+          // If an exception occurs during payout, log the error and keep order status as unpaid
+          \Log::error("Payout failed for order_id: {$order->id}. Error: {$e->getMessage()}");
+      }
+  }
 }

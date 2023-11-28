@@ -18,10 +18,23 @@ class MerchantService
      * @param array{domain: string, name: string, email: string, api_key: string} $data
      * @return Merchant
      */
-    public function register(array $data): Merchant
-    {
-        // TODO: Complete this method
-    }
+  public function register(array $data): Merchant
+  {
+      $user = User::create([
+          'name' => $data['name'],
+          'email' => $data['email'],
+          'password' => bcrypt($data['api_key']), 
+          'type' => User::MERCHANT, 
+      ]);
+
+      $merchant = Merchant::create([
+          'domain' => $data['domain'],
+          'user_id' => $user->id,
+      ]);
+
+      return $merchant;
+  }
+
 
     /**
      * Update the user
@@ -29,10 +42,21 @@ class MerchantService
      * @param array{domain: string, name: string, email: string, api_key: string} $data
      * @return void
      */
-    public function updateMerchant(User $user, array $data)
-    {
-        // TODO: Complete this method
-    }
+  public function updateMerchant(User $user, array $data)
+  {
+      $user->update([
+          'name' => $data['name'],
+          'email' => $data['email'],
+      ]);
+
+      $merchant = $user->merchant; // Assuming there's a relationship between User and Merchant
+      if ($merchant) {
+          $merchant->update([
+              'domain' => $data['domain'],
+          ]);
+      }
+  }
+
 
     /**
      * Find a merchant by their email.
@@ -41,10 +65,12 @@ class MerchantService
      * @param string $email
      * @return Merchant|null
      */
-    public function findMerchantByEmail(string $email): ?Merchant
-    {
-        // TODO: Complete this method
-    }
+  public function findMerchantByEmail(string $email): ?Merchant
+  {
+      $findUser = User::where('email', $email)->first(); // find user record by email 
+      return $findUser ? $findUser->merchant : null; // check if merchant exists against that user
+  }
+
 
     /**
      * Pay out all of an affiliate's orders.
@@ -53,8 +79,13 @@ class MerchantService
      * @param Affiliate $affiliate
      * @return void
      */
-    public function payout(Affiliate $affiliate)
-    {
-        // TODO: Complete this method
-    }
+  public function payout(Affiliate $affiliate)
+  {
+      $unpaidOrders = $affiliate->orders()->where('paid', false)->get();
+
+      foreach ($unpaidOrders as $key => $unpaid_order) {
+          PayoutOrderJob::dispatch($unpaid_order); // dispatch PayoutOrderJob job
+      }
+  }
+
 }

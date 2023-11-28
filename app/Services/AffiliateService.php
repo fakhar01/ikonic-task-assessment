@@ -25,8 +25,23 @@ class AffiliateService
      * @param  float $commissionRate
      * @return Affiliate
      */
-    public function register(Merchant $merchant, string $email, string $name, float $commissionRate): Affiliate
-    {
-        // TODO: Complete this method
-    }
+  public function register(Merchant $merchant, string $email, string $name, float $commissionRate): Affiliate
+  {
+      try {
+          $affiliate = Affiliate::create([
+              'merchant_id' => $merchant->id,
+              'email' => $email,
+              'name' => $name,
+              'commission_rate' => $commissionRate,
+          ]);
+
+          // Send email if created successfully
+          Mail::to($email)->send(new AffiliateCreated($affiliate));
+
+          return $affiliate;
+      } catch (\Exception $e) {
+          throw new AffiliateCreateException("Failed to create affiliation: {$e->getMessage()}"); // handel the error
+      }
+  }
+
 }
